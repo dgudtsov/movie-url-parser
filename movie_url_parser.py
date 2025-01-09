@@ -11,7 +11,7 @@ It defines classes_and_methods
 
 @copyright:  2025. All rights reserved.
 
-@license:    license
+@license:    Apache
 
 @contact:    user_email
 @deffield    updated: Updated
