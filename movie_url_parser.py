@@ -147,10 +147,13 @@ USAGE
             print("parsing ",fn)
             with open(fn, "rt") as f:
                 for url in f:
+                    
                     # create object instance and parse url
                     movie=Movie(url)
-                    # if url has been parsed succesfully 
+                    
+                    # if url has been parsed successfully 
                     if movie.ID is not None:
+                        
                         # request to external service
                         if movie.req(TOKEN):
                             
