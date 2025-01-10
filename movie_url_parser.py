@@ -169,6 +169,8 @@ USAGE
         files = args.files
         verbose = args.verbose
         api = args.api
+        
+        print("using API: ",api)
 
         if verbose is not None and verbose > 0:
             print("Verbose mode on")
