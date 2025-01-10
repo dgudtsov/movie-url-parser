@@ -31,17 +31,23 @@ __version__ = 0.1
 __date__ = '2025-01-09'
 __updated__ = '2025-01-09'
 
+API_KP_DEV="kp-dev"
+API_KP_UNOFF="kp-unoff"
 
-URL="https://api.kinopoisk.dev/v1.4/movie/{id}"
+API={
+    API_KP_DEV:"https://api.kinopoisk.dev/v1.4/movie/{id}",
+    API_KP_UNOFF: "https://kinopoiskapiunofficial.tech/api/v2.2/films/{id}"
+    }
 
 DEBUG = 1
 TESTRUN = 0
 PROFILE = 0
 
 class Movie():
-    def __init__(self,url):
+    def __init__(self,api,url):
 
         self.result=None
+        self.api=api
         
         m = re.search('.*kinopoisk.*/film/([0-9]+).*', url) or \
             re.search('.*kinopoisk.*/series/([0-9]+).*', url)
@@ -56,13 +62,17 @@ class Movie():
     def req(self,TOKEN):
         if len(TOKEN)>0:
             self.headers = {'X-API-KEY': TOKEN}
-            r = requests.get(URL.format(id=self.ID), headers=self.headers)
+            r = requests.get(API[self.api].format(id=self.ID), headers=self.headers)
             self.result=r.json()
         
         if (self.result is not None and len(self.result)>5):
             return True
         else:
             return None
+
+class Movie_Kp_Dev(Movie):
+    def __init__(self,url):
+        Movie.__init__(self, API_KP_DEV, url)
         
     def parse(self):
         return {
@@ -76,6 +86,25 @@ class Movie():
             'genres':[d['name'] for d in self.result['genres'] if 'name' in d],
             'countries':[d['name'] for d in self.result['countries'] if 'name' in d]
         }
+
+class Movie_Kp_Unoff(Movie):
+    def __init__(self,url):
+        Movie.__init__(self, API_KP_UNOFF, url)
+                    
+    def parse(self):
+        return {
+            'url':self.URL,
+            'imdb':self.result.get('ratingImdb'),
+            'kp':self.result.get('ratingKinopoisk'),
+            'year':self.result.get('year'),
+            'name':self.result.get('nameRu'),
+            
+            'alternativeName':self.result.get('nameOriginal'),
+            'shortDescription':self.result.get('shortDescription'),
+            
+            'genres':[d['genre'] for d in self.result['genres'] if 'genre' in d],
+            'countries':[d['country'] for d in self.result['countries'] if 'country' in d]
+        }           
         
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -89,7 +118,9 @@ class CLIError(Exception):
 
 def main(argv=None): # IGNORE:C0111
     '''Command line options.'''
-
+    
+    global DEBUG
+    
     if argv is None:
         argv = sys.argv
     else:
@@ -117,6 +148,9 @@ USAGE
     try:
 
         TOKEN=os.environ.get("TOKEN")
+        if TOKEN is None:
+            print("set env TOKEN, exiting")
+            return
 #        TOKEN=""
 
         # Setup argument parser
@@ -124,6 +158,7 @@ USAGE
         parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
         parser.add_argument("-o", "--output", dest="output", help="output CSV file name [default: %(default)s]")
+        parser.add_argument("-a", "--api", dest="api", choices=API.keys(), default=API_KP_DEV, help="choose api: kinopoisk.dev or kinopoiskapiunofficial.tech [default: %(default)s]")
 
         parser.add_argument(dest="files", help="paths to source file(s) [default: %(default)s]", metavar="file", nargs='+')
 
@@ -133,6 +168,7 @@ USAGE
         output = args.output
         files = args.files
         verbose = args.verbose
+        api = args.api
 
         if verbose is not None and verbose > 0:
             print("Verbose mode on")
@@ -149,7 +185,12 @@ USAGE
                 for url in f:
                     
                     # create object instance and parse url
-                    movie=Movie(url)
+                    if (api==API_KP_DEV):
+                        movie=Movie_Kp_Dev(url)
+                    elif (api==API_KP_UNOFF):
+                        movie=Movie_Kp_Unoff(url)
+                    else:
+                        print("undefined API")
                     
                     # if url has been parsed successfully 
                     if movie.ID is not None:
@@ -172,7 +213,7 @@ USAGE
                                 # dump movie details into CSV
                                 w.writerow(my_dict)
                         else:
-                            if (DEBUG): print("line not matched: ",url)
+                            if (DEBUG): print("line not matched or request error: ",url)
                             None
 
         return 0
@@ -188,7 +229,8 @@ USAGE
         return 2
 
 if __name__ == "__main__":
-#    if DEBUG:
+    if DEBUG:
+        None
 #        sys.argv.append("-h")
 #        sys.argv.append("-v")
     if TESTRUN:
