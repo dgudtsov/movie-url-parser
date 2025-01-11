@@ -39,6 +39,9 @@ API={
     API_KP_UNOFF: "https://kinopoiskapiunofficial.tech/api/v2.2/films/{id}"
     }
 
+# max number of sequential errors to stop execution 
+max_errors_to_exit=5
+
 DEBUG = 1
 TESTRUN = 0
 PROFILE = 0
@@ -178,11 +181,16 @@ USAGE
         if output is not None:
             fw=open(output, "w", newline="")
         fw_header=True
+        errors=0
 
         for fn in files:
             print("parsing ",fn)
             with open(fn, "rt") as f:
                 for url in f:
+                    # stop the script if max number of errors are reached
+                    if errors>max_errors_to_exit: 
+                        print ("exiting because of errors")
+                        sys.exit(1)
                     
                     # create object instance and parse url
                     if (api==API_KP_DEV):
@@ -197,6 +205,7 @@ USAGE
                         
                         # request to external service
                         if movie.req(TOKEN):
+                            errors=0
                             
                             # populate internal structure from external response
                             my_dict=movie.parse()
@@ -214,8 +223,10 @@ USAGE
                                 w.writerow(my_dict)
                         else:
                             if (DEBUG): print("line not matched or request error: ",url)
+                            errors+=1
                             None
 
+        print ("done")
         return 0
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
