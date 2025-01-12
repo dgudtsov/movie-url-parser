@@ -66,7 +66,10 @@ class Movie():
         if len(TOKEN)>0:
             self.headers = {'X-API-KEY': TOKEN}
             r = requests.get(API[self.api].format(id=self.ID), headers=self.headers)
-            self.result=r.json()
+            if r.status_code == 200:
+                self.result=r.json()
+            else:
+                return None
         
         if (self.result is not None and len(self.result)>5):
             return True
